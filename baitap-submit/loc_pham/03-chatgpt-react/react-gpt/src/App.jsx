@@ -70,6 +70,7 @@ function App() {
 
   const clearChatHistory = () => {
     setChatHistory([]);
+    //remove from local storage
     window.localStorage.removeItem('chatHistory');
   };
 
