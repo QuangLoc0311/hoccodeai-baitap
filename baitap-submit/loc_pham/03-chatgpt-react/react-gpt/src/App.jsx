@@ -3,22 +3,13 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
-  apiKey: window.localStorage.getItem('apiKey'),
+  apiKey: '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',
   dangerouslyAllowBrowser: true,
 });
 
 function App() {
   const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    {
-      role: 'user',
-      content: 'Hello: How are you?',
-    },
-    {
-      role: 'assistant',
-      content: "I'm fine. Thank you",
-    },
-  ]);
+  const [chatHistory, setChatHistory] = useState([]);
 
   useEffect(() => {
     const apiKey = window.localStorage.getItem('apiKey')
@@ -32,49 +23,23 @@ function App() {
   }, []);
 
   const sendMessage = async () => {
-    const userMessage = [
-      {
-        role: 'user',
-        content: message,
-      },
-    ];
-
-    const waitingBotMessage = {
-      role: 'assistant',
-      content: 'Waiting...',
-    };
-
-    setChatHistory([...chatHistory, userMessage, waitingBotMessage]);
     setMessage('');
 
-    try {
-      const chatCompletion = await client.chat.completions.create({
-        messages: [...chatHistory, userMessage], // Include full chat history
-        model: 'gemma2-9b-it',
-        stream: true,
-      });
+    const userMessage = { role: 'user', content: message };
+    const waitingBotMessage = {
+      role: 'assistant',
+      content: 'Vui lòng chờ bot trả lời...',
+    };
+    setChatHistory([...chatHistory, userMessage, waitingBotMessage]);
 
-      let fullResponse = '';
+    const chatCompletion = await client.chat.completions.create({
+      messages: [...chatHistory, userMessage],
+      model: 'gemma2-9b-it',
+    });
 
-      // Handle streaming response
-      for await (const chunk of chatCompletion) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        fullResponse += content;
-
-        // Update chat history with accumulated response
-        setChatHistory((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            role: 'assistant',
-            content: fullResponse,
-          };
-          return updated;
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      // Handle error appropriately
-    }
+    const response = chatCompletion.choices[0].message.content;
+    const botMessage = { role: 'assistant', content: response };
+    setChatHistory([...chatHistory, userMessage, botMessage]);
   };
 
   return (
