@@ -7,6 +7,10 @@ const client = new OpenAI({
   dangerouslyAllowBrowser: true,
 });
 
+function isBotMessage(chatMessage) {
+  return chatMessage.role === 'assistant';
+}
+
 function App() {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
@@ -22,7 +26,9 @@ function App() {
     
   }, []);
 
-  const sendMessage = async () => {
+  const sendMessage = async (e) => {
+    e.preventDefault();
+
     setMessage('');
 
     const userMessage = { role: 'user', content: message };
@@ -35,11 +41,23 @@ function App() {
     const chatCompletion = await client.chat.completions.create({
       messages: [...chatHistory, userMessage],
       model: 'gemma2-9b-it',
+      stream: true,
     });
 
-    const response = chatCompletion.choices[0].message.content;
-    const botMessage = { role: 'assistant', content: response };
-    setChatHistory([...chatHistory, userMessage, botMessage]);
+    let fullResponse = '';
+
+    for await (const chunk of chatCompletion) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      fullResponse += content;
+      setChatHistory((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: fullResponse,
+        };
+        return updated;
+      });
+    }
   };
 
   return (
@@ -47,41 +65,39 @@ function App() {
       <div className="container mx-auto p-4 flex flex-col h-full max-w-2xl">
         <h1 className="text-2xl font-bold mb-4">ChatUI với React + OpenAI</h1>
 
-        <form className="flex">
+        <form className="flex" onSubmit={sendMessage}>
           <input
-            value={message}
             type="text"
-            onChange={(e) => setMessage(e.target.value)}
             placeholder="Tin nhắn của bạn..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
             className="flex-grow p-2 rounded-l border border-gray-300"
           />
           <button
             type="submit"
             className="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600"
-            onClick={(e) => {
-              e.preventDefault();
-              sendMessage();
-            }}
           >
             Gửi tin nhắn
           </button>
         </form>
 
         <div className="flex-grow overflow-y-auto mt-4 bg-white rounded shadow p-4">
-          {chatHistory?.map((message) => (
+          {chatHistory.map((chatMessage, i) => (
             <div
-              key={message.content}
+              key={i}
               className={`mb-2 ${
-                message.role === 'assistant' ? 'text-right' : 'text-left'
+                isBotMessage(chatMessage) ? 'text-right' : ''
               }`}
             >
-              <p className="text-gray-600 text-sm capitalize">{message.role}</p>
+              <p className="text-gray-600 text-sm">
+                {isBotMessage(chatMessage) ? 'Bot' : 'User'}
+              </p>
               <p
-                className={`${
-                  message.role === 'assistant' ? 'bg-green-100' : 'bg-blue-100'
-                } p-2 rounded-lg inline-block whitespace-pre-line`}
+                className={`p-2 rounded-lg inline-block text-left ${
+                  isBotMessage(chatMessage) ? 'bg-green-100' : 'bg-blue-100'
+                }`}
               >
-                {message.content}
+                {chatMessage.content}
               </p>
             </div>
           ))}
