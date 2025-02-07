@@ -17,6 +17,10 @@ function App() {
 
   useEffect(() => {
     const apiKey = window.localStorage.getItem('apiKey')
+    const oldChatHistory = JSON.parse(window.localStorage.getItem('chatHistory')) || []
+    if (oldChatHistory.length > 0) {
+      setChatHistory(oldChatHistory)
+    }
     if (!apiKey) {
       const newApiKey = window.prompt('Nhập API Key của bạn (groq AI):');
       if (newApiKey) {
@@ -25,6 +29,10 @@ function App() {
     }
     
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+  }, [chatHistory]);
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -60,11 +68,15 @@ function App() {
     }
   };
 
+  const clearChatHistory = () => {
+    setChatHistory([]);
+    window.localStorage.removeItem('chatHistory');
+  };
+
   return (
     <div className="bg-gray-100 h-screen flex flex-col">
       <div className="container mx-auto p-4 flex flex-col h-full max-w-2xl">
         <h1 className="text-2xl font-bold mb-4">ChatUI với React + OpenAI</h1>
-
         <form className="flex" onSubmit={sendMessage}>
           <input
             type="text"
@@ -80,6 +92,7 @@ function App() {
             Gửi tin nhắn
           </button>
         </form>
+        <button onClick={clearChatHistory} className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 cursor-pointer">Xóa lịch sử</button>
 
         <div className="flex-grow overflow-y-auto mt-4 bg-white rounded shadow p-4">
           {chatHistory.map((chatMessage, i) => (
